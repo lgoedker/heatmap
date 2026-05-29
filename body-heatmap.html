@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Body Heat Map</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 5px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 5px;
+            font-size: 18px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 5px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            flex: 1;
+            min-width: 90px;
+            padding: 10px 8px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button:active {
+            background: #45a049;
+        }
+
+        button.secondary {
+            background: #f44336;
+        }
+
+        button.secondary:active {
+            background: #da190b;
+        }
+
+        .map-container {
+            position: relative;
+            width: 100%;
+            max-width: 95vw;
+            max-height: calc(100vh - 110px);
+            margin: 0 auto;
+            background: #e8e8e8;
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            touch-action: none;
+        }
+
+        .body-image {
+            width: 100%;
+            height: 100%;
+            max-height: calc(100vh - 110px);
+            display: block;
+            object-fit: contain;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+
+        .stats {
+            text-align: center;
+            margin-top: 5px;
+            font-size: 12px;
+            color: #888;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📍 Body Heat Map</h1>
+
+        <div class="controls">
+            <button onclick="clearData()">Clear All</button>
+            <button class="secondary" onclick="undoLast()">Undo Last</button>
+            <button onclick="exportData()">Export Data</button>
+        </div>
+
+        <div class="map-container" id="mapContainer">
+            <svg class="body-image" viewBox="0 -55 200 500" xmlns="http://www.w3.org/2000/svg">
+                <!-- Medical diagram style body -->
+                <g>
+                    <!-- Neck (draw first so head appears on top) -->
+                    <path d="M 88 88 L 85 100 L 115 100 L 112 88 Z" fill="#d0d0d0" stroke="#999" stroke-width="2"/>
+
+                    <!-- Head - Enlarged for more data point area -->
+                    <ellipse cx="100" cy="45" rx="38" ry="48" fill="#d0d0d0" stroke="#999" stroke-width="2"/>
+
+                    <!-- Facial features -->
+                    <!-- Eyes -->
+                    <ellipse cx="85" cy="38" rx="4" ry="6" fill="#888"/>
+                    <ellipse cx="115" cy="38" rx="4" ry="6" fill="#888"/>
+
+                    <!-- Nose -->
+                    <path d="M 100 48 L 97 58 L 100 60 L 103 58 Z" fill="#b8b8b8" stroke="#999" stroke-width="0.8"/>
+
+                    <!-- Mouth -->
+                    <path d="M 90 70 Q 100 73, 110 70" stroke="#888" stroke-width="2" fill="none" stroke-linecap="round"/>
+
+                    <!-- Ears -->
+                    <ellipse cx="62" cy="45" rx="6" ry="12" fill="#c8c8c8" stroke="#999" stroke-width="1.5"/>
+                    <ellipse cx="138" cy="45" rx="6" ry="12" fill="#c8c8c8" stroke="#999" stroke-width="1.5"/>
+
+                    <!-- Forehead detail line -->
+                    <path d="M 70 20 Q 100 18, 130 20" stroke="#999" stroke-width="0.5" fill="none" opacity="0.3"/>
+
+                    <!-- Torso (shrunk) -->
+                    <path d="M 88 100
+                             C 75 102, 62 107, 58 115
+                             L 56 140
+                             L 58 165
+                             L 64 190
+                             L 75 210
+                             L 85 218
+                             L 93 220
+                             L 100 220.5
+                             L 107 220
+                             L 115 218
+                             L 125 210
+                             L 136 190
+                             L 142 165
+                             L 144 140
+                             L 142 115
+                             C 138 107, 125 102, 112 100 Z"
+                          fill="#d0d0d0" stroke="#999" stroke-width="2"/>
+
+                    <!-- Left arm (shrunk) -->
+                    <path d="M 58 115
+                             L 50 127
+                             L 44 145
+                             L 40 163
+                             L 38 180
+                             L 37 192
+                             C 37 196, 39 198, 41 198
+                             C 43 198, 45 196, 45 192
+                             L 46 180
+                             L 48 163
+                             L 52 145
+                             L 58 127
+                             L 64 115 Z"
+                          fill="#d0d0d0" stroke="#999" stroke-width="2"/>
+
+                    <!-- Right arm (shrunk) -->
+                    <path d="M 142 115
+                             L 150 127
+                             L 156 145
+                             L 160 163
+                             L 162 180
+                             L 163 192
+                             C 163 196, 161 198, 159 198
+                             C 157 198, 155 196, 155 192
+                             L 154 180
+                             L 152 163
+                             L 148 145
+                             L 142 127
+                             L 136 115 Z"
+                          fill="#d0d0d0" stroke="#999" stroke-width="2"/>
+
+                    <!-- Left leg (shrunk) -->
+                    <path d="M 85 218
+                             L 83 245
+                             L 81 280
+                             L 79 315
+                             L 77 350
+                             L 75 372
+                             C 75 375, 73 377, 75 380
+                             L 81 382
+                             C 84 382, 87 380, 89 377
+                             L 92 372
+                             L 94 350
+                             L 96 315
+                             L 98 280
+                             L 98 245
+                             L 96 218 Z"
+                          fill="#d0d0d0" stroke="#999" stroke-width="2"/>
+
+                    <!-- Right leg (shrunk) -->
+                    <path d="M 115 218
+                             L 117 245
+                             L 119 280
+                             L 121 315
+                             L 123 350
+                             L 125 372
+                             C 125 375, 127 377, 125 380
+                             L 119 382
+                             C 116 382, 113 380, 111 377
+                             L 108 372
+                             L 106 350
+                             L 104 315
+                             L 102 280
+                             L 102 245
+                             L 104 218 Z"
+                          fill="#d0d0d0" stroke="#999" stroke-width="2"/>
+
+                    <!-- Left hand with fingers -->
+                    <ellipse cx="41" cy="195" rx="4" ry="6" fill="#c8c8c8" stroke="#999" stroke-width="1"/>
+                    <!-- Thumb -->
+                    <ellipse cx="38" cy="193" rx="1.5" ry="3" fill="#c8c8c8" stroke="#999" stroke-width="0.8"/>
+                    <!-- Fingers -->
+                    <ellipse cx="40" cy="200" rx="1.2" ry="2.5" fill="#c8c8c8" stroke="#999" stroke-width="0.8"/>
+                    <ellipse cx="42" cy="201" rx="1.2" ry="2.5" fill="#c8c8c8" stroke="#999" stroke-width="0.8"/>
+                    <ellipse cx="44" cy="200" rx="1.2" ry="2.5" fill="#c8c8c8" stroke="#999" stroke-width="0.8"/>
+
+                    <!-- Right hand with fingers -->
+                    <ellipse cx="159" cy="195" rx="4" ry="6" fill="#c8c8c8" stroke="#999" stroke-width="1"/>
+                    <!-- Thumb -->
+                    <ellipse cx="162" cy="193" rx="1.5" ry="3" fill="#c8c8c8" stroke="#999" stroke-width="0.8"/>
+                    <!-- Fingers -->
+                    <ellipse cx="160" cy="200" rx="1.2" ry="2.5" fill="#c8c8c8" stroke="#999" stroke-width="0.8"/>
+                    <ellipse cx="158" cy="201" rx="1.2" ry="2.5" fill="#c8c8c8" stroke="#999" stroke-width="0.8"/>
+                    <ellipse cx="156" cy="200" rx="1.2" ry="2.5" fill="#c8c8c8" stroke="#999" stroke-width="0.8"/>
+
+                    <!-- Left foot with toes -->
+                    <ellipse cx="78" cy="384" rx="8" ry="5" fill="#c8c8c8" stroke="#999" stroke-width="1"/>
+                    <circle cx="73" cy="383" r="1.5" fill="#b8b8b8" stroke="#999" stroke-width="0.5"/>
+                    <circle cx="76" cy="382" r="1.5" fill="#b8b8b8" stroke="#999" stroke-width="0.5"/>
+                    <circle cx="79" cy="382" r="1.5" fill="#b8b8b8" stroke="#999" stroke-width="0.5"/>
+                    <circle cx="82" cy="383" r="1.3" fill="#b8b8b8" stroke="#999" stroke-width="0.5"/>
+
+                    <!-- Right foot with toes -->
+                    <ellipse cx="122" cy="384" rx="8" ry="5" fill="#c8c8c8" stroke="#999" stroke-width="1"/>
+                    <circle cx="127" cy="383" r="1.5" fill="#b8b8b8" stroke="#999" stroke-width="0.5"/>
+                    <circle cx="124" cy="382" r="1.5" fill="#b8b8b8" stroke="#999" stroke-width="0.5"/>
+                    <circle cx="121" cy="382" r="1.5" fill="#b8b8b8" stroke="#999" stroke-width="0.5"/>
+                    <circle cx="118" cy="383" r="1.3" fill="#b8b8b8" stroke="#999" stroke-width="0.5"/>
+
+                </g>
+            </svg>
+            <canvas id="heatmapCanvas"></canvas>
+        </div>
+
+        <div class="stats">
+            <p>Points: <span id="pointCount">0</span></p>
+            <p>Tap anywhere to add points • Heat shows density</p>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('heatmapCanvas');
+        const ctx = canvas.getContext('2d');
+        const mapContainer = document.getElementById('mapContainer');
+        const pointCount = document.getElementById('pointCount');
+
+        let dataPoints = [];
+        const RADIUS = 12; // Heat radius around each point
+
+        // Load saved data
+        function loadData() {
+            const saved = localStorage.getItem('bodyHeatmapData');
+            if (saved) {
+                dataPoints = JSON.parse(saved);
+                updateDisplay();
+            }
+        }
+
+        // Save data
+        function saveData() {
+            localStorage.setItem('bodyHeatmapData', JSON.stringify(dataPoints));
+        }
+
+        // Set canvas size to match container
+        function resizeCanvas() {
+            const rect = mapContainer.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            updateDisplay();
+        }
+
+        // Add point on click/tap
+        function addPoint(e) {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+            const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+
+            // Normalize coordinates (0-1)
+            const normalizedX = x / rect.width;
+            const normalizedY = y / rect.height;
+
+            dataPoints.push({
+                x: normalizedX,
+                y: normalizedY,
+                timestamp: Date.now()
+            });
+
+            saveData();
+            updateDisplay();
+        }
+
+        // Draw heat map based on point density
+        function updateDisplay() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (dataPoints.length === 0) {
+                pointCount.textContent = 0;
+                return;
+            }
+
+            // Calculate density for each point (how many neighbors it has)
+            const densities = dataPoints.map((point, i) => {
+                let density = 0;
+                const px = point.x * canvas.width;
+                const py = point.y * canvas.height;
+
+                dataPoints.forEach((other, j) => {
+                    // Skip the point itself
+                    if (i === j) return;
+
+                    const ox = other.x * canvas.width;
+                    const oy = other.y * canvas.height;
+                    const dist = Math.sqrt((px - ox) ** 2 + (py - oy) ** 2);
+
+                    // Add to density based on proximity (closer = more contribution)
+                    if (dist <= RADIUS) {
+                        density += 1 - (dist / RADIUS);
+                    }
+                });
+
+                return density;
+            });
+
+            // Find max density for normalization
+            const maxDensity = Math.max(...densities);
+
+            // Draw each point with color based on its density
+            dataPoints.forEach((point, i) => {
+                const x = point.x * canvas.width;
+                const y = point.y * canvas.height;
+                const normalizedDensity = densities[i] / maxDensity;
+
+                // Create gradient
+                const gradient = ctx.createRadialGradient(x, y, 0, x, y, RADIUS);
+
+                // Red gradient: light red to dark red
+                let r, g, b;
+                const d = normalizedDensity;
+
+                if (d < 0.33) {
+                    // Light red/pink
+                    const t = d * 3;
+                    r = 255;
+                    g = Math.floor(180 - t * 80);
+                    b = Math.floor(180 - t * 80);
+                } else if (d < 0.66) {
+                    // Medium red
+                    const t = (d - 0.33) * 3;
+                    r = 255;
+                    g = Math.floor(100 - t * 70);
+                    b = Math.floor(100 - t * 70);
+                } else {
+                    // Dark red
+                    const t = (d - 0.66) * 3;
+                    r = Math.floor(255 - t * 116);
+                    g = Math.floor(30 - t * 30);
+                    b = Math.floor(30 - t * 30);
+                }
+
+                const alpha = 0.5 + (normalizedDensity * 0.5);
+
+                gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${alpha})`);
+                gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+
+                ctx.fillStyle = gradient;
+                ctx.fillRect(x - RADIUS, y - RADIUS, RADIUS * 2, RADIUS * 2);
+            });
+
+            pointCount.textContent = dataPoints.length;
+        }
+
+        // Clear all data
+        function clearData() {
+            if (confirm('Clear all data points?')) {
+                dataPoints = [];
+                saveData();
+                updateDisplay();
+            }
+        }
+
+        // Undo last point
+        function undoLast() {
+            if (dataPoints.length > 0) {
+                dataPoints.pop();
+                saveData();
+                updateDisplay();
+            }
+        }
+
+        // Export data as JSON
+        function exportData() {
+            const dataStr = JSON.stringify(dataPoints, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `body-heatmap-${Date.now()}.json`;
+            link.click();
+        }
+
+        // Event listeners
+        canvas.addEventListener('click', addPoint);
+        canvas.addEventListener('touchstart', addPoint);
+        window.addEventListener('resize', resizeCanvas);
+
+        // Initialize
+        resizeCanvas();
+        loadData();
+    </script>
+</body>
+</html>
