@@ -277,7 +277,7 @@
         const pointCount = document.getElementById('pointCount');
 
         let dataPoints = [];
-        const RADIUS = 40; // Heat radius around each point
+        const RADIUS = 12; // Heat radius around each point
 
         // Load saved data
         function loadData() {
@@ -331,8 +331,8 @@
                 return;
             }
 
-            // Use multiply blend mode so overlapping areas get darker
-            ctx.globalCompositeOperation = 'multiply';
+            // Use normal blending (source-over is default)
+            ctx.globalCompositeOperation = 'source-over';
 
             // Calculate density for each point (how many neighbors it has)
             const densities = dataPoints.map((point, i) => {
