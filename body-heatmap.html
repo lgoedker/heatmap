@@ -349,7 +349,8 @@
                         const dist = Math.sqrt((px - pointX) ** 2 + (py - pointY) ** 2);
 
                         if (dist <= heatRadius) {
-                            const contribution = 1 - (dist / heatRadius);
+                            // Gradient from 1.0 (center) to 0.75 (edge)
+                            const contribution = 1.0 - (dist / heatRadius) * 0.25;
                             totalHeat += contribution;
                         }
                     });
@@ -373,7 +374,8 @@
                         const r = Math.floor(255 - intensity * 75);
                         const g = Math.floor(200 * (1 - intensity));
                         const b = Math.floor(200 * (1 - intensity));
-                        const a = Math.floor(Math.pow(intensity, 1.5) * 255);
+                        // Remap alpha from 75-255 (instead of 0-255)
+                        const a = Math.floor(75 + Math.pow(intensity, 1.5) * 180);
 
                         const idx = (py * canvas.width + px) * 4;
                         data[idx] = r;
