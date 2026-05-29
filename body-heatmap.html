@@ -322,7 +322,7 @@
             updateDisplay();
         }
 
-        // Draw heat map based on point density
+        // Draw heat map using pixel-based density calculation
         function updateDisplay() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -331,77 +331,50 @@
                 return;
             }
 
-            // Use normal blending (source-over is default)
-            ctx.globalCompositeOperation = 'source-over';
+            const imageData = ctx.createImageData(canvas.width, canvas.height);
+            const data = imageData.data;
+            const heatRadius = RADIUS * 0.8; // Very small, precise circles
 
-            // Calculate density for each point (how many neighbors it has)
-            const densities = dataPoints.map((point, i) => {
-                let density = 0;
-                const px = point.x * canvas.width;
-                const py = point.y * canvas.height;
+            // For each pixel, calculate how many points affect it
+            for (let py = 0; py < canvas.height; py++) {
+                for (let px = 0; px < canvas.width; px++) {
+                    let totalHeat = 0;
 
-                dataPoints.forEach((other, j) => {
-                    // Skip the point itself
-                    if (i === j) return;
+                    // Check distance to all data points
+                    dataPoints.forEach(point => {
+                        const pointX = point.x * canvas.width;
+                        const pointY = point.y * canvas.height;
+                        const dist = Math.sqrt((px - pointX) ** 2 + (py - pointY) ** 2);
 
-                    const ox = other.x * canvas.width;
-                    const oy = other.y * canvas.height;
-                    const dist = Math.sqrt((px - ox) ** 2 + (py - oy) ** 2);
+                        if (dist <= heatRadius) {
+                            // Closer = more contribution (1.0 at center, 0.0 at radius edge)
+                            const contribution = 1 - (dist / heatRadius);
+                            totalHeat += contribution;
+                        }
+                    });
 
-                    // Add to density based on proximity (closer = more contribution)
-                    if (dist <= RADIUS) {
-                        density += 1 - (dist / RADIUS);
+                    // Only render if heat is above threshold
+                    if (totalHeat > 0.1) {
+                        // Map heat to color with strong gradient
+                        // Use power function for better spread
+                        const intensity = Math.pow(Math.min(totalHeat / 3, 1), 0.8);
+
+                        // Very light pink (255,240,240) -> Very dark red (140,0,0)
+                        const r = Math.floor(255 - intensity * 115);
+                        const g = Math.floor(240 * (1 - intensity));
+                        const b = Math.floor(240 * (1 - intensity));
+                        const a = Math.floor(120 + intensity * 135);
+
+                        const idx = (py * canvas.width + px) * 4;
+                        data[idx] = r;
+                        data[idx + 1] = g;
+                        data[idx + 2] = b;
+                        data[idx + 3] = a;
                     }
-                });
-
-                return density;
-            });
-
-            // Find max density for normalization
-            const maxDensity = Math.max(...densities);
-
-            // Draw each point with color based on its density
-            dataPoints.forEach((point, i) => {
-                const x = point.x * canvas.width;
-                const y = point.y * canvas.height;
-                const normalizedDensity = densities[i] / maxDensity;
-
-                // Create gradient
-                const gradient = ctx.createRadialGradient(x, y, 0, x, y, RADIUS);
-
-                // Red gradient: light red to dark red
-                let r, g, b;
-                const d = normalizedDensity;
-
-                if (d < 0.33) {
-                    // Light red/pink
-                    const t = d * 3;
-                    r = 255;
-                    g = Math.floor(180 - t * 80);
-                    b = Math.floor(180 - t * 80);
-                } else if (d < 0.66) {
-                    // Medium red
-                    const t = (d - 0.33) * 3;
-                    r = 255;
-                    g = Math.floor(100 - t * 70);
-                    b = Math.floor(100 - t * 70);
-                } else {
-                    // Dark red
-                    const t = (d - 0.66) * 3;
-                    r = Math.floor(255 - t * 116);
-                    g = Math.floor(30 - t * 30);
-                    b = Math.floor(30 - t * 30);
                 }
+            }
 
-                const alpha = 0.5 + (normalizedDensity * 0.5);
-
-                gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${alpha})`);
-                gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
-
-                ctx.fillStyle = gradient;
-                ctx.fillRect(x - RADIUS, y - RADIUS, RADIUS * 2, RADIUS * 2);
-            });
-
+            ctx.putImageData(imageData, 0, 0);
             pointCount.textContent = dataPoints.length;
         }
 
