@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Body Heat Map</title>
+    <title>Kiss Map</title>
     <style>
         * {
             margin: 0;
@@ -103,7 +103,11 @@
 </head>
 <body>
     <div class="container">
-        <h1>📍 Body Heat Map</h1>
+        <h1>💋 Kiss Map</h1>
+        <div class="stats" style="margin-bottom: 10px;">
+            <p>Tap anywhere to add points</p>
+            <p>Points: <span id="pointCount">0</span></p>
+        </div>
 
         <div class="controls">
             <button onclick="clearData()">Clear All</button>
@@ -263,11 +267,6 @@
             </svg>
             <canvas id="heatmapCanvas"></canvas>
         </div>
-
-        <div class="stats">
-            <p>Points: <span id="pointCount">0</span></p>
-            <p>Tap anywhere to add points • Heat shows density</p>
-        </div>
     </div>
 
     <script>
@@ -277,7 +276,7 @@
         const pointCount = document.getElementById('pointCount');
 
         let dataPoints = [];
-        const RADIUS = 12; // Heat radius around each point
+        const RADIUS = 10; // Heat radius around each point
 
         // Load saved data
         function loadData() {
@@ -322,7 +321,7 @@
             updateDisplay();
         }
 
-        // Draw heat map using pixel-based density calculation
+        // Draw heat map using pixel-based density calculation with relative intensity
         function updateDisplay() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -333,9 +332,12 @@
 
             const imageData = ctx.createImageData(canvas.width, canvas.height);
             const data = imageData.data;
-            const heatRadius = RADIUS * 0.8; // Very small, precise circles
+            const heatRadius = RADIUS * 0.8;
 
-            // For each pixel, calculate how many points affect it
+            // First pass: calculate all heat values and find maximum
+            const heatMap = new Float32Array(canvas.width * canvas.height);
+            let maxHeat = 0;
+
             for (let py = 0; py < canvas.height; py++) {
                 for (let px = 0; px < canvas.width; px++) {
                     let totalHeat = 0;
@@ -347,23 +349,31 @@
                         const dist = Math.sqrt((px - pointX) ** 2 + (py - pointY) ** 2);
 
                         if (dist <= heatRadius) {
-                            // Closer = more contribution (1.0 at center, 0.0 at radius edge)
                             const contribution = 1 - (dist / heatRadius);
                             totalHeat += contribution;
                         }
                     });
 
-                    // Only render if heat is above threshold
-                    if (totalHeat > 0.1) {
-                        // Map heat to color with strong gradient
-                        // Use power function for better spread
-                        const intensity = Math.pow(Math.min(totalHeat / 3, 1), 0.8);
+                    heatMap[py * canvas.width + px] = totalHeat;
+                    if (totalHeat > maxHeat) maxHeat = totalHeat;
+                }
+            }
 
-                        // Very light pink (255,240,240) -> Very dark red (140,0,0)
-                        const r = Math.floor(255 - intensity * 115);
-                        const g = Math.floor(240 * (1 - intensity));
-                        const b = Math.floor(240 * (1 - intensity));
-                        const a = Math.floor(120 + intensity * 135);
+            // Second pass: normalize to max and render
+            for (let py = 0; py < canvas.height; py++) {
+                for (let px = 0; px < canvas.width; px++) {
+                    const totalHeat = heatMap[py * canvas.width + px];
+
+                    if (totalHeat > 0.01) {
+                        // Normalize to max heat (relative intensity)
+                        const normalizedHeat = totalHeat / maxHeat;
+                        const intensity = Math.pow(normalizedHeat, 0.8);
+
+                        // Red gradient with transparency at edges
+                        const r = Math.floor(255 - intensity * 75);
+                        const g = Math.floor(200 * (1 - intensity));
+                        const b = Math.floor(200 * (1 - intensity));
+                        const a = Math.floor(Math.pow(intensity, 1.5) * 255);
 
                         const idx = (py * canvas.width + px) * 4;
                         data[idx] = r;
